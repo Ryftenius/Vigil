@@ -64,11 +64,7 @@ impl Alert {
     }
 
     pub fn cef_line(&self) -> String {
-        let sev = match self.kind.as_str() {
-            "suspicious_whitelisted_handle_access" => 9,
-            "protected_resource_access" => 8,
-            _ => 6,
-        };
+        let sev = self.severity();
         format!(
             "CEF:0|TITAN|Vigil|1.0|{}|{}|{}|src={} suser={} msg={} filePath={} cs1Label=ruleName cs1={} cs2Label=eventKind cs2={}",
             self.event_id,
@@ -81,6 +77,14 @@ impl Alert {
             sanitize_cef(&self.data_name),
             sanitize_cef(&self.kind)
         )
+    }
+
+    pub fn severity(&self) -> u8 {
+        match self.kind.as_str() {
+            "suspicious_whitelisted_handle_access" => 9,
+            "protected_resource_access" => 8,
+            _ => 6,
+        }
     }
 
     pub fn sigma_json(&self) -> serde_json::Value {
@@ -261,8 +265,8 @@ fn open_append_file(path: &Path) -> Result<File> {
 mod tests {
     use super::*;
     use crate::support::config::{
-        AllowlistConfig, ConcurrencyConfig, EndpointAlertConfig, GeneralConfig, SecurityConfig,
-        SiemConfig, TrustApiConfig, WatchConfig,
+        AllowlistConfig, ConcurrencyConfig, EndpointAlertConfig, GeneralConfig,
+        NotificationsConfig, SecurityConfig, SiemConfig, TrustApiConfig, WatchConfig,
     };
     use std::{
         fs,
@@ -281,6 +285,7 @@ mod tests {
             security: SecurityConfig::default(),
             concurrency: ConcurrencyConfig::default(),
             endpoint_alert: EndpointAlertConfig::default(),
+            notifications: NotificationsConfig::default(),
             siem: SiemConfig {
                 enabled: true,
                 formats,

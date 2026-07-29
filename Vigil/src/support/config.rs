@@ -1,6 +1,10 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, fs, path::Path};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::Path,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -21,6 +25,9 @@ pub struct Config {
 
     #[serde(default)]
     pub endpoint_alert: EndpointAlertConfig,
+
+    #[serde(default)]
+    pub notifications: NotificationsConfig,
 
     #[serde(default)]
     pub siem: SiemConfig,
@@ -130,7 +137,7 @@ pub struct ConcurrencyConfig {
     pub alert_channel_capacity: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EndpointTransport {
     #[default]
@@ -154,6 +161,110 @@ pub struct EndpointAlertConfig {
 
     #[serde(default = "default_endpoint_retries")]
     pub retries: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NotificationsConfig {
+    #[serde(default)]
+    pub enabled: bool,
+
+    #[serde(default)]
+    pub providers: Vec<NotificationProviderConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NotificationFormat {
+    #[default]
+    Json,
+    Cef,
+    SigmaJson,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NotificationFilterConfig {
+    #[serde(default)]
+    pub kinds: Vec<String>,
+
+    #[serde(default)]
+    pub rules: Vec<String>,
+
+    #[serde(default)]
+    pub min_severity: Option<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum NotificationProviderConfig {
+    Webhook {
+        name: String,
+
+        #[serde(default = "default_provider_enabled")]
+        enabled: bool,
+
+        url: String,
+
+        #[serde(default)]
+        format: NotificationFormat,
+
+        #[serde(default = "default_notification_timeout_ms")]
+        timeout_ms: u64,
+
+        #[serde(default = "default_notification_max_attempts")]
+        max_attempts: usize,
+
+        #[serde(default = "default_notification_backoff_ms")]
+        backoff_ms: u64,
+
+        #[serde(default)]
+        headers: BTreeMap<String, String>,
+
+        #[serde(default)]
+        bearer_token_env: Option<String>,
+
+        #[serde(flatten)]
+        filter: NotificationFilterConfig,
+    },
+    Socket {
+        name: String,
+
+        #[serde(default = "default_provider_enabled")]
+        enabled: bool,
+
+        endpoint: String,
+
+        #[serde(default)]
+        transport: EndpointTransport,
+
+        #[serde(default)]
+        format: NotificationFormat,
+
+        #[serde(default = "default_notification_timeout_ms")]
+        timeout_ms: u64,
+
+        #[serde(default = "default_notification_max_attempts")]
+        max_attempts: usize,
+
+        #[serde(default = "default_notification_backoff_ms")]
+        backoff_ms: u64,
+
+        #[serde(flatten)]
+        filter: NotificationFilterConfig,
+    },
+}
+
+impl NotificationProviderConfig {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Webhook { name, .. } | Self::Socket { name, .. } => name,
+        }
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            Self::Webhook { enabled, .. } | Self::Socket { enabled, .. } => *enabled,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,6 +310,18 @@ fn default_connect_timeout_ms() -> u64 {
 }
 fn default_endpoint_retries() -> usize {
     1
+}
+fn default_provider_enabled() -> bool {
+    true
+}
+fn default_notification_timeout_ms() -> u64 {
+    3000
+}
+fn default_notification_max_attempts() -> usize {
+    3
+}
+fn default_notification_backoff_ms() -> u64 {
+    250
 }
 fn default_trust_api_timeout_ms() -> u64 {
     2500
@@ -358,6 +481,8 @@ impl Config {
             anyhow::bail!("endpoint_alert.enabled=true but endpoint_alert.endpoint is empty");
         }
 
+        normalize_notification_providers(&mut cfg.notifications)?;
+
         if cfg.trust_api.enabled && cfg.trust_api.endpoint.trim().is_empty() {
             anyhow::bail!("trust_api.enabled=true but trust_api.endpoint is empty");
         }
@@ -376,6 +501,110 @@ impl Config {
 
         Ok(cfg)
     }
+}
+
+fn normalize_notification_providers(cfg: &mut NotificationsConfig) -> Result<()> {
+    let mut names = HashSet::new();
+    for provider in &mut cfg.providers {
+        let (
+            name,
+            enabled,
+            target,
+            target_label,
+            timeout_ms,
+            max_attempts,
+            bearer_token_env,
+            filter,
+        ) = match provider {
+            NotificationProviderConfig::Webhook {
+                name,
+                enabled,
+                url,
+                timeout_ms,
+                max_attempts,
+                bearer_token_env,
+                filter,
+                ..
+            } => (
+                name,
+                *enabled,
+                url,
+                "url",
+                *timeout_ms,
+                *max_attempts,
+                Some(bearer_token_env),
+                filter,
+            ),
+            NotificationProviderConfig::Socket {
+                name,
+                enabled,
+                endpoint,
+                timeout_ms,
+                max_attempts,
+                filter,
+                ..
+            } => (
+                name,
+                *enabled,
+                endpoint,
+                "endpoint",
+                *timeout_ms,
+                *max_attempts,
+                None,
+                filter,
+            ),
+        };
+
+        *name = name.trim().to_string();
+        if name.is_empty() {
+            anyhow::bail!("notification provider name cannot be empty");
+        }
+        if !names.insert(name.to_lowercase()) {
+            anyhow::bail!("duplicate notification provider name '{name}'");
+        }
+
+        *target = target.trim().to_string();
+        if enabled && target.is_empty() {
+            anyhow::bail!("notification provider '{name}' has an empty {target_label}");
+        }
+        if timeout_ms == 0 {
+            anyhow::bail!("notification provider '{name}' timeout_ms must be greater than zero");
+        }
+        if max_attempts == 0 {
+            anyhow::bail!("notification provider '{name}' max_attempts must be greater than zero");
+        }
+
+        if let Some(value) = bearer_token_env {
+            *value = value
+                .as_deref()
+                .map(str::trim)
+                .filter(|env_name| !env_name.is_empty())
+                .map(str::to_string);
+        }
+
+        normalize_filter(name, filter)?;
+    }
+    Ok(())
+}
+
+fn normalize_filter(name: &str, filter: &mut NotificationFilterConfig) -> Result<()> {
+    filter.kinds = filter
+        .kinds
+        .drain(..)
+        .map(|value| value.trim().to_lowercase())
+        .filter(|value| !value.is_empty())
+        .collect();
+    filter.rules = filter
+        .rules
+        .drain(..)
+        .map(|value| value.trim().to_lowercase())
+        .filter(|value| !value.is_empty())
+        .collect();
+
+    if filter.min_severity.is_some_and(|value| value > 10) {
+        anyhow::bail!("notification provider '{name}' min_severity must be between 0 and 10");
+    }
+    Ok(())
 }
 
 fn normalize_thumbprint(value: String) -> String {
@@ -481,5 +710,96 @@ protected_substrings = ["\\Users\\Damon\\Cookies"]
         assert_eq!(cfg.allowlist.process_name_allow[0], "chrome.exe");
         assert_eq!(cfg.security.denylisted_cert_thumbprints[0], "AABB11");
         assert_eq!(cfg.watch.protected[0].substring, "\\users\\damon\\cookies");
+    }
+
+    #[test]
+    fn config_loads_and_normalizes_notification_providers() {
+        let path = write_temp_config(
+            r#"
+[notifications]
+enabled = true
+
+[[notifications.providers]]
+type = "webhook"
+name = " Primary SOAR "
+url = " https://soar.example.test/hooks/vigil "
+format = "json"
+timeout_ms = 4000
+max_attempts = 4
+backoff_ms = 500
+headers = { "X-Tenant" = "blue-team" }
+bearer_token_env = " VIGIL_SOAR_TOKEN "
+kinds = [" Protected_Resource_Access "]
+rules = [" Cookie Store "]
+min_severity = 8
+
+[[notifications.providers]]
+type = "socket"
+name = "CEF collector"
+endpoint = "127.0.0.1:5514"
+transport = "tcp"
+format = "cef"
+"#,
+        );
+
+        let cfg = Config::load(&path).expect("config should load");
+        let _ = fs::remove_file(&path);
+
+        assert!(cfg.notifications.enabled);
+        assert_eq!(cfg.notifications.providers.len(), 2);
+        let NotificationProviderConfig::Webhook {
+            name,
+            url,
+            bearer_token_env,
+            filter,
+            ..
+        } = &cfg.notifications.providers[0]
+        else {
+            panic!("expected webhook provider");
+        };
+        assert_eq!(name, "Primary SOAR");
+        assert_eq!(url, "https://soar.example.test/hooks/vigil");
+        assert_eq!(bearer_token_env.as_deref(), Some("VIGIL_SOAR_TOKEN"));
+        assert_eq!(filter.kinds, ["protected_resource_access"]);
+        assert_eq!(filter.rules, ["cookie store"]);
+        assert_eq!(filter.min_severity, Some(8));
+    }
+
+    #[test]
+    fn config_rejects_duplicate_notification_provider_names() {
+        let path = write_temp_config(
+            r#"
+[notifications]
+enabled = true
+
+[[notifications.providers]]
+type = "webhook"
+name = "SOAR"
+url = "https://soar.example.test/one"
+
+[[notifications.providers]]
+type = "socket"
+name = "soar"
+endpoint = "127.0.0.1:9000"
+"#,
+        );
+
+        let error = Config::load(&path).expect_err("duplicate provider names should fail");
+        let _ = fs::remove_file(&path);
+        assert!(
+            error
+                .to_string()
+                .contains("duplicate notification provider name")
+        );
+    }
+
+    #[test]
+    fn checked_in_config_loads() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
+        let cfg = Config::load(&path).expect("checked-in config should load");
+
+        assert_eq!(cfg.notifications.providers.len(), 2);
+        assert_eq!(cfg.notifications.providers[0].name(), "primary-soar");
+        assert_eq!(cfg.notifications.providers[1].name(), "cef-collector");
     }
 }

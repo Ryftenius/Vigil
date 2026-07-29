@@ -9,6 +9,8 @@ license = "AGPL-3"
 [features]
 # Opt-in: include remote alert forwarding over UDP/TCP.
 remote_endpoint = []
+# Opt-in: deliver alerts to SOAR and notification webhooks over HTTP.
+webhook_notifications = ["reqwest"]
 # Opt-in: call operator-provided trust API for signature decisions.
 trust_api = ["reqwest"]
 

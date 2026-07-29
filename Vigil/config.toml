@@ -33,8 +33,9 @@ worker_threads = 4
 # Backpressure for event bursts.
 alert_channel_capacity = 8192
 
+# Compatibility block for deployments using the original single socket endpoint.
+# New deployments should use [notifications] providers below.
 [endpoint_alert]
-# Optional external forwarding for EDR backends.
 enabled = false
 
 # Endpoint address in host:port format.
@@ -45,6 +46,48 @@ transport = "udp"
 
 connect_timeout_ms = 1500
 retries = 2
+
+[notifications]
+# Enables all providers marked enabled below.
+enabled = false
+
+# HTTP webhook for SOAR, case-management, or notification pipelines.
+# Build with --features webhook_notifications.
+[[notifications.providers]]
+type = "webhook"
+name = "primary-soar"
+enabled = true
+url = "https://soar.example.com/api/v1/hooks/vigil"
+format = "json"
+timeout_ms = 3000
+max_attempts = 3
+backoff_ms = 250
+
+# Read the bearer token from the process environment at startup.
+bearer_token_env = "VIGIL_SOAR_TOKEN"
+
+# Static non-secret headers are supported.
+headers = { "X-Tenant-ID" = "blue-team" }
+
+# Optional routing filters. Empty arrays match every alert.
+kinds = ["protected_resource_access", "suspicious_whitelisted_handle_access"]
+rules = []
+min_severity = 8
+
+# UDP/TCP provider for collectors that accept JSON, CEF, or Sigma JSON.
+# Build with --features remote_endpoint.
+[[notifications.providers]]
+type = "socket"
+name = "cef-collector"
+enabled = false
+endpoint = "127.0.0.1:5514"
+transport = "tcp"
+format = "cef"
+timeout_ms = 1500
+max_attempts = 2
+backoff_ms = 100
+kinds = []
+rules = []
 
 [siem]
 enabled = true

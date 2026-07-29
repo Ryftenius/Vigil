@@ -8,8 +8,7 @@ mod trust;
 
 use anyhow::{Context, Result, anyhow};
 use crossbeam_channel::bounded;
-#[cfg(feature = "remote_endpoint")]
-use output::endpoint;
+use output::notifications::NotificationPipeline;
 use runtime::engine::Engine;
 use std::{fs, path::PathBuf, sync::Arc, thread, time::Duration};
 use support::{diag, win::to_wide};
@@ -81,8 +80,14 @@ fn run() -> Result<()> {
         output::alerts::AlertLogger::new(&log_dir, &cfg)
             .with_context(|| format!("failed to initialize logger in {}", log_dir.display()))?,
     );
-    #[cfg(feature = "remote_endpoint")]
-    let endpoint = Arc::new(endpoint::EndpointAlerter::from_config(&cfg.endpoint_alert));
+    let notifications = Arc::new(
+        NotificationPipeline::from_config(&cfg)
+            .context("failed to initialize notification providers")?,
+    );
+    diag::startup(&format!(
+        "notification providers ready: {}",
+        notifications.provider_count()
+    ));
 
     if !cfg.general.quiet {
         if let Some(primary_log) = logger.primary_log_path() {
@@ -109,8 +114,7 @@ fn run() -> Result<()> {
     for idx in 0..worker_count {
         let rx = alert_rx.clone();
         let logger = logger.clone();
-        #[cfg(feature = "remote_endpoint")]
-        let endpoint = endpoint.clone();
+        let notifications = notifications.clone();
         thread::Builder::new()
             .name(format!("vigil-alert-worker-{idx}"))
             .spawn(move || {
@@ -125,11 +129,11 @@ fn run() -> Result<()> {
                         eprintln!("[TML][LOG] {:?}", e);
                     }
 
-                    #[cfg(feature = "remote_endpoint")]
-                    if endpoint.is_enabled()
-                        && let Err(e) = endpoint.send(&alert)
-                    {
-                        eprintln!("[TML][ENDPOINT] {:?}", e);
+                    for failure in notifications.send(&alert) {
+                        eprintln!(
+                            "[TITAN Vigil][NOTIFY][{}] {:?}",
+                            failure.provider, failure.error
+                        );
                     }
                 }
             })?;
