@@ -66,7 +66,7 @@ impl Alert {
     pub fn cef_line(&self) -> String {
         let sev = self.severity();
         format!(
-            "CEF:0|TITAN|Vigil|1.0|{}|{}|{}|src={} suser={} msg={} filePath={} cs1Label=ruleName cs1={} cs2Label=eventKind cs2={}",
+            "CEF:0|RYFTENIUS|Vigil|1.0|{}|{}|{}|src={} suser={} msg={} filePath={} cs1Label=ruleName cs1={} cs2Label=eventKind cs2={}",
             self.event_id,
             sanitize_cef(&self.data_name),
             sev,
@@ -98,7 +98,7 @@ impl Alert {
         }
         serde_json::json!({
             "ts_unix": self.ts_unix,
-            "title": "TITAN Vigil protected resource access",
+            "title": "RYFTENIUS Vigil protected resource access",
             "logsource": {
                 "product": "windows",
                 "service": "kernel-etw",
@@ -239,7 +239,7 @@ fn open_sink_file(log_dir: &Path, file_name: &str) -> Result<(PathBuf, File)> {
         return Ok((pid_fallback, file));
     }
 
-    let temp_root = std::env::temp_dir().join("TITAN-Vigil-CE").join("logs");
+    let temp_root = std::env::temp_dir().join("RYFTENIUS-Vigil-CE").join("logs");
     let _ = std::fs::create_dir_all(&temp_root);
     let temp_path = temp_root.join(file_name);
     let file = open_append_file(&temp_path).with_context(|| {
@@ -309,7 +309,7 @@ mod tests {
         );
 
         let cef = alert.cef_line();
-        assert!(cef.starts_with("CEF:0|TITAN|Vigil|1.0|12|"));
+        assert!(cef.starts_with("CEF:0|RYFTENIUS|Vigil|1.0|12|"));
         assert!(cef.contains(r"Name\|Eq\=Test"));
         assert!(cef.contains(r"filePath=C:\\target\=a\\file"));
         assert!(cef.contains("msg=line1 line2"));
@@ -345,7 +345,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let log_dir = std::env::temp_dir().join(format!("titan-vigil-alert-tests-{ts}"));
+        let log_dir = std::env::temp_dir().join(format!("ryftenius-vigil-alert-tests-{ts}"));
         fs::create_dir_all(&log_dir).expect("failed to create temp log dir");
 
         let cfg = test_cfg_with_formats(vec!["jsonl".to_string(), "cef".to_string()]);

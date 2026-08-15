@@ -21,7 +21,7 @@ pub fn generate_sigma_rules(cfg: &Config, log_dir: &Path) -> Result<Option<PathB
     for rule in &cfg.watch.protected {
         let rule_id = stable_rule_id(&rule.substring);
         content.push_str("---\n");
-        content.push_str(&format!("title: TITAN Vigil - {}\n", rule.name));
+        content.push_str(&format!("title: RYFTENIUS Vigil - {}\n", rule.name));
         content.push_str(&format!("id: {}\n", rule_id));
         content.push_str("status: stable\n");
         content.push_str("logsource:\n");
@@ -56,7 +56,7 @@ fn stable_rule_id(rule: &str) -> String {
         hash ^= *b as u64;
         hash = hash.wrapping_mul(0x100000001b3);
     }
-    format!("titan-vigil-{hash:016x}")
+    format!("ryftenius-vigil-{hash:016x}")
 }
 
 fn escape_single_quotes(input: &str) -> String {

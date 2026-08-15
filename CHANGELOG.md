@@ -13,7 +13,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - UDP/TCP socket providers with JSON, CEF, and Sigma JSON payload selection
 - Per-provider alert routing by kind, protected rule, and minimum severity
 - Provider-specific timeout, retry, backoff, headers, and environment-backed bearer tokens
-- Versioned `titan.vigil.alert.v1` webhook envelope
+- Versioned `ryftenius.vigil.alert.v1` webhook envelope
 - Enterprise-oriented config sections (`security`, `concurrency`, `endpoint_alert`, `siem`)
 - SIEM output formats (JSONL, CEF, Sigma JSON)
 - Sigma rule artifact generation

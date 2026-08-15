@@ -8,7 +8,7 @@ This repository is currently pre-1.0.0. Security fixes are applied to the latest
 
 Please do not open public GitHub issues for security vulnerabilities.
 
-Report privately to: `security@titan-softwork-solutions.example`
+Report privately to: `security@RYFTENIUS.example`
 
 Include:
 

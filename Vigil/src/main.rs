@@ -72,7 +72,7 @@ fn run() -> Result<()> {
     let log_root = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    let log_dir = log_root.join("TITAN-Vigil-CE").join("logs");
+    let log_dir = log_root.join("RYFTENIUS-Vigil-CE").join("logs");
     fs::create_dir_all(&log_dir)
         .with_context(|| format!("failed to create log directory {}", log_dir.display()))?;
     diag::startup(&format!("log dir ready: {}", log_dir.display()));
@@ -92,11 +92,11 @@ fn run() -> Result<()> {
     if !cfg.general.quiet {
         if let Some(primary_log) = logger.primary_log_path() {
             eprintln!(
-                "[TITAN Vigil] running; logging to {}",
+                "[RYFTENIUS Vigil] running; logging to {}",
                 primary_log.display()
             );
         } else {
-            eprintln!("[TITAN Vigil] running");
+            eprintln!("[RYFTENIUS Vigil] running");
         }
     }
 
@@ -105,7 +105,10 @@ fn run() -> Result<()> {
     {
         diag::startup(&format!("sigma rules generated: {}", path.display()));
         if !cfg.general.quiet {
-            eprintln!("[TITAN Vigil] sigma rules generated: {}", path.display());
+            eprintln!(
+                "[RYFTENIUS Vigil] sigma rules generated: {}",
+                path.display()
+            );
         }
     }
 
@@ -131,7 +134,7 @@ fn run() -> Result<()> {
 
                     for failure in notifications.send(&alert) {
                         eprintln!(
-                            "[TITAN Vigil][NOTIFY][{}] {:?}",
+                            "[RYFTENIUS Vigil][NOTIFY][{}] {:?}",
                             failure.provider, failure.error
                         );
                     }
@@ -148,14 +151,14 @@ fn run() -> Result<()> {
         thread::sleep(Duration::from_secs(60));
         let dropped = engine.take_dropped_alerts();
         if dropped > 0 {
-            eprintln!("[TITAN Vigil] dropped {dropped} alerts due to backpressure");
+            eprintln!("[RYFTENIUS Vigil] dropped {dropped} alerts due to backpressure");
         }
     }
 }
 
 fn show_startup_error(err: &anyhow::Error) {
     diag::startup(&format!("startup error: {err}"));
-    let mut msg = String::from("TITAN Vigil failed to start.\n\n");
+    let mut msg = String::from("RYFTENIUS Vigil failed to start.\n\n");
     msg.push_str(&format!("Error: {err}\n"));
     for cause in err.chain().skip(1) {
         msg.push_str(&format!("Caused by: {cause}\n"));
@@ -167,7 +170,7 @@ fn show_startup_error(err: &anyhow::Error) {
         msg.push('\n');
     }
 
-    let title = to_wide("TITAN Vigil");
+    let title = to_wide("RYFTENIUS Vigil");
     let body = to_wide(&msg);
     unsafe {
         let _ = MessageBoxW(
@@ -225,7 +228,7 @@ fn startup_hint(err: &anyhow::Error) -> Option<&'static str> {
         || msg.contains("sesystemprofileprivilege")
     {
         return Some(
-            "Run from an elevated terminal (Run as Administrator) and ensure the account has SeSystemProfilePrivilege. If a stale ETW session exists, run: `logman stop TITAN-Vigil -ets`.",
+            "Run from an elevated terminal (Run as Administrator) and ensure the account has SeSystemProfilePrivilege. If a stale ETW session exists, run: `logman stop RYFTENIUS-Vigil -ets`.",
         );
     }
     None

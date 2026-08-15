@@ -830,7 +830,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "titan_vigil"
+name = "ryftenius_vigil"
 version = "0.1.0"
 dependencies = [
  "anyhow",

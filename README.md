@@ -1,4 +1,4 @@
-<h1 align="center">TITAN Vigil</h1>
+<h1 align="center">RYFTENIUS Vigil</h1>
 <p align="center"><b>Kernel ETW Blue-Team Telemetry Engine</b></p>
 
 <p align="center">
@@ -215,8 +215,8 @@ envelope:
 
 ```json
 {
-  "schema": "titan.vigil.alert.v1",
-  "source": "TITAN Vigil",
+  "schema": "ryftenius.vigil.alert.v1",
+  "source": "RYFTENIUS Vigil",
   "severity": 8,
   "alert": {
     "ts_unix": 1785225600,
@@ -292,7 +292,7 @@ cargo run --release -- --config config.toml --verbose
 Logs are written to:
 
 ```
-%LOCALAPPDATA%\TITAN-Vigil-CE\logs
+%LOCALAPPDATA%\RYFTENIUS-Vigil-CE\logs
 ```
 
 When `siem.generate_sigma_rules = true`, a Sigma rules artifact is also generated in the same log directory (or the configured absolute path).

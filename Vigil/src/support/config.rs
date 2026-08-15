@@ -642,7 +642,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("titan-vigil-config-{ts}.toml"));
+        let path = std::env::temp_dir().join(format!("ryftenius-vigil-config-{ts}.toml"));
         fs::write(&path, content).expect("failed to write temp config");
         path
     }

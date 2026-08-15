@@ -28,7 +28,7 @@ use windows::{
     core::{GUID, PCWSTR, PWSTR},
 };
 
-const TRACE_NAME: &str = "TITAN-Vigil";
+const TRACE_NAME: &str = "RYFTENIUS-Vigil";
 
 const KERNEL_PROCESS_GUID: GUID = GUID::from_u128(0x22fb2cd6_0e7b_422b_a0c7_2fad1fd0e716);
 const KERNEL_FILE_GUID: GUID = GUID::from_u128(0xedd08927_9cc4_4e65_b970_c2560fb5c289);
@@ -280,7 +280,7 @@ fn win32_hint(code: u32) -> Option<&'static str> {
         );
     }
     if code == ERROR_ALREADY_EXISTS.0 {
-        return Some("ETW session already exists; stop it with `logman stop TITAN-Vigil -ets`");
+        return Some("ETW session already exists; stop it with `logman stop RYFTENIUS-Vigil -ets`");
     }
     if code == ERROR_WMI_INSTANCE_NOT_FOUND.0 {
         return Some("ETW session not found");

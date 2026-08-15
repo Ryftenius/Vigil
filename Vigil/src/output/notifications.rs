@@ -31,7 +31,7 @@ use reqwest::{
 };
 
 #[cfg(any(feature = "remote_endpoint", feature = "webhook_notifications", test))]
-const ENVELOPE_SCHEMA: &str = "titan.vigil.alert.v1";
+const ENVELOPE_SCHEMA: &str = "ryftenius.vigil.alert.v1";
 
 trait NotificationProvider: Send + Sync {
     fn name(&self) -> &str;
@@ -239,7 +239,7 @@ fn encode_payload(
         NotificationFormat::Json => Ok(EncodedPayload {
             body: serde_json::to_vec(&NotificationEnvelope {
                 schema: ENVELOPE_SCHEMA,
-                source: "TITAN Vigil",
+                source: "RYFTENIUS Vigil",
                 severity: alert.severity(),
                 alert,
             })?,
@@ -509,7 +509,7 @@ mod tests {
         let value: serde_json::Value =
             serde_json::from_slice(&payload.body).expect("decode envelope");
         assert_eq!(value["schema"], ENVELOPE_SCHEMA);
-        assert_eq!(value["source"], "TITAN Vigil");
+        assert_eq!(value["source"], "RYFTENIUS Vigil");
         assert_eq!(value["severity"], 8);
         assert_eq!(value["alert"]["pid"], 42);
     }

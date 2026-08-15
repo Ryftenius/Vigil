@@ -79,7 +79,7 @@ fn show_toast(headline: &str) -> windows::core::Result<()> {
     </binding>
   </visual>
 </toast>"#,
-        xml_escape("TITAN Vigil Alert"),
+        xml_escape("RYFTENIUS Vigil Alert"),
         xml_escape(headline),
     );
 
